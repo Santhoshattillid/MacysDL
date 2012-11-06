@@ -57,7 +57,7 @@ namespace MacysSPDL
             XmlNode ndViewFields = xmlDoc.CreateNode(XmlNodeType.Element, "ViewFields", "");
             XmlNode ndQueryOptions = xmlDoc.CreateNode(XmlNodeType.Element, "QueryOptions", "");
             ndQueryOptions.InnerXml = "<IncludeMandatoryColumns>TRUE</IncludeMandatoryColumns>" + "<DateInUtc>TRUE</DateInUtc>";
-            ndViewFields.InnerXml = string.Empty;
+            ndViewFields.InnerXml = @"<FieldRef Name='" + _columnDefinition.ContentColumnName + @"' />";
             ndQuery.InnerXml = GetQuery(topic, location, jobCode);
             XmlNode ndListItems = _listsSvc.GetListItems(_listName, null, ndQuery, ndViewFields, null, ndQueryOptions, null);
 
@@ -79,7 +79,7 @@ namespace MacysSPDL
             //iterate each row in sharepoint list.
             //in result xml each row is in element "row"
             var items = from item in resultxmlDoc.XPathSelectElements("//row")
-                        let attribute = item.Attribute("Content")
+                        let attribute = item.Attribute("ows_" + _columnDefinition.ContentColumnName)
                         where attribute != null
                         select new
                         {
@@ -108,7 +108,9 @@ namespace MacysSPDL
             XmlNode ndViewFields = xmlDoc.CreateNode(XmlNodeType.Element, "ViewFields", "");
             XmlNode ndQueryOptions = xmlDoc.CreateNode(XmlNodeType.Element, "QueryOptions", "");
             ndQueryOptions.InnerXml = "<IncludeMandatoryColumns>TRUE</IncludeMandatoryColumns>" + "<DateInUtc>TRUE</DateInUtc>";
-            ndViewFields.InnerXml = string.Empty;
+
+            ndViewFields.InnerXml = @"<FieldRef Name='" + _columnDefinition.ContentColumnName + @"' />";
+
             ndQuery.InnerXml = GetQuery(location, jobCode);
             XmlNode ndListItems = _listsSvc.GetListItems(_listName, null, ndQuery, ndViewFields, null, ndQueryOptions, null);
 
@@ -130,7 +132,7 @@ namespace MacysSPDL
             //iterate each row in sharepoint list.
             //in result xml each row is in element "row"
             var items = from item in resultxmlDoc.XPathSelectElements("//row")
-                        let attribute = item.Attribute("Content")
+                        let attribute = item.Attribute("ows_" + _columnDefinition.ContentColumnName)
                         where attribute != null
                         select new
                         {
@@ -140,7 +142,6 @@ namespace MacysSPDL
 
             //display each item in title field in console..
             Array.ForEach(items.ToArray(), item => contents.Add(item.Content));
-
             return contents;
         }
 
@@ -156,11 +157,11 @@ namespace MacysSPDL
             XmlNode ndQuery = xmlDoc.CreateNode(XmlNodeType.Element, "Query", "");
             XmlNode ndViewFields = xmlDoc.CreateNode(XmlNodeType.Element, "ViewFields", "");
             XmlNode ndQueryOptions = xmlDoc.CreateNode(XmlNodeType.Element, "QueryOptions", "");
-            ndQueryOptions.InnerXml = "<IncludeMandatoryColumns>TRUE</IncludeMandatoryColumns>" + "<DateInUtc>TRUE</DateInUtc>";
-            ndViewFields.InnerXml = @"<ViewFields>
+            ndQueryOptions.InnerXml = string.Empty;
+            ndViewFields.InnerXml = @"
                                         <FieldRef Name='" + _columnDefinition.TopicColumnName + @"' />
                                         <FieldRef Name='" + _columnDefinition.SubTopicColumnName + @"' />
-                                      </ViewFields>";
+                                      ";
             ndQuery.InnerXml = GetQuery(location, jobCode);
             XmlNode ndListItems = _listsSvc.GetListItems(_listName, null, ndQuery, ndViewFields, null, ndQueryOptions, null);
 
@@ -171,6 +172,7 @@ namespace MacysSPDL
             xmlResponse = RemoveShortNameSpace.Replace(xmlResponse, delegate(Match m)
             {
                 Group closetag = m.Groups["closetag"];
+
                 if (closetag.Length != 0)
                     return "</";
                 return "<";
@@ -181,30 +183,31 @@ namespace MacysSPDL
 
             //iterate each row in sharepoint list.
             //in result xml each row is in element "row"
-            return (from row in resultxmlDoc.XPathSelectElements("//row") where row.Attribute(_columnDefinition.TopicColumnName) != null && row.Attribute(_columnDefinition.TopicColumnName) != null let topic = row.Attribute(_columnDefinition.TopicColumnName) let subTopic = row.Attribute(_columnDefinition.SubTopicColumnName) where topic != null && subTopic != null select topic.Value.Substring(topic.Value.IndexOf("#", StringComparison.Ordinal) + 1) + ":" + subTopic.Value.Substring(subTopic.Value.IndexOf("#", StringComparison.Ordinal) + 1)).ToList();
+            return (from row in resultxmlDoc.XPathSelectElements("//row") where row.Attribute("ows_" + _columnDefinition.TopicColumnName) != null && row.Attribute("ows_" + _columnDefinition.SubTopicColumnName) != null let topic = row.Attribute("ows_" + _columnDefinition.TopicColumnName) let subTopic = row.Attribute("ows_" + _columnDefinition.SubTopicColumnName) where topic != null && subTopic != null select topic.Value.Substring(topic.Value.IndexOf("#", StringComparison.Ordinal) + 1) + ":" + subTopic.Value.Substring(subTopic.Value.IndexOf("#", StringComparison.Ordinal) + 1)).ToList();
         }
 
         internal string GetQuery(string topic, string location, string jobCode)
         {
             // Return list item collection based on the document name
             var stringBuilder = new StringBuilder();
-            stringBuilder.Append(@"<Where>
-                        <And>
-                        <And>
-                            <Eq>
-                                <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
-                            </Eq>
-                            <Eq>
-                                <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
-                            </Eq>
+            stringBuilder.Append(@"
 
-                        </And>
-                            <Eq>
-                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
-                            </Eq>
-                        </And>
-                        </Where>");
-
+                                    <Where>
+                                        <And>
+                                            <And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                </Eq>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                            </And>
+                                            <Eq>
+                                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                        </And>
+                                    </Where>
+                            ");
             return stringBuilder.ToString();
         }
 
@@ -212,44 +215,20 @@ namespace MacysSPDL
         {
             // Return list item collection based on the document name
             var stringBuilder = new StringBuilder();
-            stringBuilder.Append(@"<Where>
-                        <And>
-                            <Eq>
-                                <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='Text'>" + location + @"</Value>
-                            </Eq>
-                            <Eq>
-                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='Text'>" + jobCode + @"</Value>
-                            </Eq>
-                        </And>
-                        </Where>");
+            stringBuilder.Append(@"
+
+                            <Where>
+                                <And>
+                                    <Eq>
+                                        <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                    </Eq>
+                                    <Eq>
+                                        <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                    </Eq>
+                                </And>
+                            </Where>
+                        ");
             return stringBuilder.ToString();
-        }
-    }
-
-    public class ColumnDefinition
-    {
-        public string TopicColumnName { get; set; }
-
-        public string TopicColumnType { get; set; }
-
-        public string LocationColumnName { get; set; }
-
-        public string LocationColumnType { get; set; }
-
-        public string JobCodeColumnName { get; set; }
-
-        public string JobCodeColumnType { get; set; }
-
-        public string SubTopicColumnName { get; set; }
-
-        public string SubTopicColumnType { get; set; }
-
-        public ColumnDefinition(string topicColumnName, string locationColumnName, string jobCodeColumnName, string subTopicColumnName)
-        {
-            TopicColumnName = topicColumnName;
-            LocationColumnName = locationColumnName;
-            JobCodeColumnName = jobCodeColumnName;
-            SubTopicColumnName = subTopicColumnName;
         }
     }
 }

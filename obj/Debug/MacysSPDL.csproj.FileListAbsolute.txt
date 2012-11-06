@@ -5,3 +5,10 @@ C:\Users\Administrator\Documents\Santhosh_Development\SPWebServicesTest\MacysSPD
 C:\Users\Administrator\Documents\Santhosh_Development\SPWebServicesTest\MacysSPDL\obj\Debug\ResolveAssemblyReference.cache
 C:\Users\Administrator\Documents\Santhosh_Development\SPWebServicesTest\MacysSPDL\obj\Debug\MacysSPDL.dll
 C:\Users\Administrator\Documents\Santhosh_Development\SPWebServicesTest\MacysSPDL\obj\Debug\MacysSPDL.pdb
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\bin\Debug\MacysSPDL.dll.config
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\bin\Debug\MacysSPDL.dll
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\bin\Debug\MacysSPDL.pdb
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\bin\Debug\Microsoft.Sharepoint.Sandbox.dll
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\obj\Debug\MacysSPDL.dll
+C:\Users\Administrator\Documents\Santhosh_Development\MacysSPDL\obj\Debug\MacysSPDL.pdb

@@ -186,11 +186,67 @@ namespace MacysSPDL
             return (from row in resultxmlDoc.XPathSelectElements("//row") where row.Attribute("ows_" + _columnDefinition.TopicColumnName) != null && row.Attribute("ows_" + _columnDefinition.SubTopicColumnName) != null let topic = row.Attribute("ows_" + _columnDefinition.TopicColumnName) let subTopic = row.Attribute("ows_" + _columnDefinition.SubTopicColumnName) where topic != null && subTopic != null select topic.Value.Substring(topic.Value.IndexOf("#", StringComparison.Ordinal) + 1) + ":" + subTopic.Value.Substring(subTopic.Value.IndexOf("#", StringComparison.Ordinal) + 1)).ToList();
         }
 
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="topic"></param>
+        /// <param name="jobCode"></param>
+        /// <param name="location"></param>
+        /// <returns></returns>
+        public string GetContentsWithSubTopic(string topic, string SubTopic, string jobCode, string location)
+        {
+            var xmlDoc = new XmlDocument();
+            XmlNode ndQuery = xmlDoc.CreateNode(XmlNodeType.Element, "Query", "");
+            XmlNode ndViewFields = xmlDoc.CreateNode(XmlNodeType.Element, "ViewFields", "");
+            XmlNode ndQueryOptions = xmlDoc.CreateNode(XmlNodeType.Element, "QueryOptions", "");
+            ndQueryOptions.InnerXml = "<IncludeMandatoryColumns>TRUE</IncludeMandatoryColumns>" + "<DateInUtc>TRUE</DateInUtc>";
+            ndViewFields.InnerXml = @"<FieldRef Name='" + _columnDefinition.ContentColumnName + @"' />";
+
+            ndQuery.InnerXml = GetQuery(topic, SubTopic, location, jobCode);
+
+            XmlNode ndListItems = _listsSvc.GetListItems(_listName, null, ndQuery, ndViewFields, null, ndQueryOptions, null);
+
+            //remove namespace xmlnls from  xml..
+            string xmlResponse = StripXmlnsRegex.Replace(ndListItems.InnerXml, "");
+
+            //find and replace short XmlNameSpace like z:,rs: from responce with space..
+            xmlResponse = RemoveShortNameSpace.Replace(xmlResponse, delegate(Match m)
+            {
+                Group closetag = m.Groups["closetag"];
+                if (closetag.Length != 0)
+                    return "</";
+                return "<";
+            });
+
+            //load xml from removed XmlNameSpace and short name of XmlNameSpace..
+            var resultxmlDoc = XDocument.Parse(xmlResponse);
+
+            //iterate each row in sharepoint list.
+            //in result xml each row is in element "row"
+            var items = from item in resultxmlDoc.XPathSelectElements("//row")
+                        let attribute = item.Attribute("ows_" + _columnDefinition.ContentColumnName)
+                        where attribute != null
+                        select new
+                        {
+                            //get Title Field of SharePoint list...
+                            Content = Convert.ToString(attribute.Value)
+                        };
+
+            string outPutContent = string.Empty;
+
+            //display each item in title field in console..
+            Array.ForEach(items.ToArray(), item => outPutContent += item.Content);
+
+            return outPutContent;
+        }
+
         internal string GetQuery(string topic, string location, string jobCode)
         {
             // Return list item collection based on the document name
             var stringBuilder = new StringBuilder();
-            stringBuilder.Append(@"
+            if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(location) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
 
                                     <Where>
                                         <And>
@@ -208,6 +264,88 @@ namespace MacysSPDL
                                         </And>
                                     </Where>
                             ");
+            }
+            else if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(location))
+            {
+                stringBuilder.Append(@"
+                                    <Where>
+                                            <And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                </Eq>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                            </And>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+
+                                    <Where>
+                                        <And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                </Eq>
+                                            <Eq>
+                                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                        </And>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(location) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+
+                                    <Where>
+                                         <And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                            <Eq>
+                                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                        </And>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(topic))
+            {
+                stringBuilder.Append(@"
+
+                                    <Where>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                </Eq>
+
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(location))
+            {
+                stringBuilder.Append(@"
+
+                                    <Where>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+
+                                    <Where>
+                                            <Eq>
+                                                <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                    </Where>
+                            ");
+            }
             return stringBuilder.ToString();
         }
 
@@ -215,8 +353,9 @@ namespace MacysSPDL
         {
             // Return list item collection based on the document name
             var stringBuilder = new StringBuilder();
-            stringBuilder.Append(@"
-
+            if (!string.IsNullOrEmpty(location) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
                             <Where>
                                 <And>
                                     <Eq>
@@ -228,6 +367,115 @@ namespace MacysSPDL
                                 </And>
                             </Where>
                         ");
+            }
+            else if (!string.IsNullOrEmpty(location))
+            {
+                stringBuilder.Append(@"
+
+                            <Where>
+                                    <Eq>
+                                        <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                    </Eq>
+                            </Where>
+                        ");
+            }
+            else if (!string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+                            <Where>
+                                    <Eq>
+                                        <FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                    </Eq>
+                            </Where>
+                        ");
+            }
+            return stringBuilder.ToString();
+        }
+
+        internal string GetQuery(string topic, string subTopic, string location, string jobCode)
+        {
+            var stringBuilder = new StringBuilder();
+            if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(subTopic) && !string.IsNullOrEmpty(location) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+                                    <Where>
+                                        <And>
+                                            <And>
+                                                <And>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                    </Eq>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.SubTopicColumnName + "'/><Value Type='" + _columnDefinition.SubTopicColumnType + "'>" + subTopic + @"</Value>
+                                                    </Eq>
+                                                </And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                            </And>
+                                            <Eq>
+                                                FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                        </And>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(subTopic))
+            {
+                stringBuilder.Append(@"
+                                    <Where>
+                                                <And>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                    </Eq>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.SubTopicColumnName + "'/><Value Type='" + _columnDefinition.SubTopicColumnType + "'>" + subTopic + @"</Value>
+                                                    </Eq>
+                                                </And>
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(subTopic) && !string.IsNullOrEmpty(location))
+            {
+                stringBuilder.Append(@"
+                                    <Where>
+                                            <And>
+                                                <And>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                    </Eq>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.SubTopicColumnName + "'/><Value Type='" + _columnDefinition.SubTopicColumnType + "'>" + subTopic + @"</Value>
+                                                    </Eq>
+                                                </And>
+                                                <Eq>
+                                                    <FieldRef Name='" + _columnDefinition.LocationColumnName + "'/><Value Type='" + _columnDefinition.LocationColumnType + "'>" + location + @"</Value>
+                                                </Eq>
+                                            </And>
+
+                                    </Where>
+                            ");
+            }
+            else if (!string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(subTopic) && !string.IsNullOrEmpty(jobCode))
+            {
+                stringBuilder.Append(@"
+                                    <Where>
+                                        <And>
+                                                <And>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.TopicColumnName + "'/><Value Type='" + _columnDefinition.TopicColumnType + "'>" + topic + @"</Value>
+                                                    </Eq>
+                                                    <Eq>
+                                                        <FieldRef Name='" + _columnDefinition.SubTopicColumnName + "'/><Value Type='" + _columnDefinition.SubTopicColumnType + "'>" + subTopic + @"</Value>
+                                                    </Eq>
+                                                </And>
+                                            <Eq>
+                                                FieldRef Name='" + _columnDefinition.JobCodeColumnName + "'/><Value Type='" + _columnDefinition.JobCodeColumnType + "'>" + jobCode + @"</Value>
+                                            </Eq>
+                                        </And>
+                                    </Where>
+                            ");
+            }
             return stringBuilder.ToString();
         }
     }
